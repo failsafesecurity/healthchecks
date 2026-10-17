@@ -20,6 +20,7 @@ class TransferProjectTestCase(BaseTestCase):
 
     def test_transfer_project_works(self) -> None:
         self.client.login(username="alice@example.org", password="password")
+        self.set_sudo_flag()
 
         form = {"transfer_project": "1", "email": "bob@example.org"}
         r = self.client.post(self.url, form)
@@ -39,6 +40,7 @@ class TransferProjectTestCase(BaseTestCase):
         self.project.save()
 
         self.client.login(username="alice@example.org", password="password")
+        self.set_sudo_flag()
 
         form = {"transfer_project": "1", "email": "bob@example.org"}
         self.client.post(self.url, form)
@@ -54,6 +56,7 @@ class TransferProjectTestCase(BaseTestCase):
 
     def test_transfer_project_checks_membership(self) -> None:
         self.client.login(username="alice@example.org", password="password")
+        self.set_sudo_flag()
 
         form = {"transfer_project": "1", "email": "charlie@example.org"}
         r = self.client.post(self.url, form)
@@ -64,6 +67,7 @@ class TransferProjectTestCase(BaseTestCase):
         self.bobs_membership.save()
 
         self.client.login(username="alice@example.org", password="password")
+        self.set_sudo_flag()
         r = self.client.post(self.url, {"cancel_transfer": "1"})
         self.assertContains(r, "Transfer cancelled!")
 
@@ -106,6 +110,7 @@ class TransferProjectTestCase(BaseTestCase):
         self.bobs_membership.save()
 
         self.client.login(username="bob@example.org", password="password")
+        self.set_sudo_flag()
         r = self.client.post(self.url, {"accept_transfer": "1"})
         self.assertContains(r, "You are now the owner of this project!")
 
@@ -142,6 +147,7 @@ class TransferProjectTestCase(BaseTestCase):
         self.bobs_profile.save()
 
         self.client.login(username="bob@example.org", password="password")
+        self.set_sudo_flag()
         r = self.client.post(self.url, {"accept_transfer": "1"})
         self.assertEqual(r.status_code, 400)
 
@@ -175,6 +181,7 @@ class TransferProjectTestCase(BaseTestCase):
         self.bobs_membership.save()
 
         self.client.login(username="bob@example.org", password="password")
+        self.set_sudo_flag()
         self.client.post(self.url, {"accept_transfer": "1"})
 
         self.project.refresh_from_db()

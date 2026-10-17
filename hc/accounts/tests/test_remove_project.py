@@ -14,6 +14,7 @@ class RemoveProjectTestCase(BaseTestCase):
         Check.objects.create(project=self.project, tags="foo a-B_1  baz@")
 
         self.client.login(username="alice@example.org", password="password")
+        self.set_sudo_flag()
         r = self.client.post(self.url)
         self.assertRedirects(r, "/")
 

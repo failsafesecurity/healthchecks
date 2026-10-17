@@ -53,6 +53,7 @@ class ProjectTestCase(BaseTestCase):
 
     def test_it_creates_api_key(self) -> None:
         self.client.login(username="alice@example.org", password="password")
+        self.set_sudo_flag()
 
         form = {"create_key": "api_key"}
         r = self.client.post(self.url, form)
@@ -65,6 +66,7 @@ class ProjectTestCase(BaseTestCase):
 
     def test_it_creates_readonly_key(self) -> None:
         self.client.login(username="alice@example.org", password="password")
+        self.set_sudo_flag()
 
         form = {"create_key": "api_key_readonly"}
         r = self.client.post(self.url, form)
@@ -80,6 +82,7 @@ class ProjectTestCase(BaseTestCase):
         self.project.save()
 
         self.client.login(username="alice@example.org", password="password")
+        self.set_sudo_flag()
 
         form = {"create_key": "ping_key"}
         r = self.client.post(self.url, form)
@@ -101,6 +104,7 @@ class ProjectTestCase(BaseTestCase):
 
     def test_it_revokes_api_key(self) -> None:
         self.client.login(username="alice@example.org", password="password")
+        self.set_sudo_flag()
         r = self.client.post(self.url, {"revoke_key": "api_key"})
         self.assertEqual(r.status_code, 200)
 
