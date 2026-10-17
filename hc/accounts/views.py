@@ -33,7 +33,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
 
 from hc.accounts import forms
-from hc.accounts.decorators import require_sudo_mode
+from hc.accounts.decorators import require_sudo_mode, sudo_mode_required
 from hc.accounts.http import AuthenticatedHttpRequest
 from hc.accounts.models import Credential, Member, Profile, Project
 from hc.api.models import Channel, Check, TokenBucket
@@ -386,6 +386,13 @@ def project(request: AuthenticatedHttpRequest, code: UUID) -> HttpResponse:
             if not rw:
                 return HttpResponseForbidden()
 
+            # Minting a new API/ping key is a durable credential change: require
+            # the user to re-authenticate first so a hijacked session alone
+            # cannot create a persistent key.
+            resp = sudo_mode_required(request)
+            if resp is not None:
+                return resp
+
             if request.POST["create_key"] == "api_key":
                 ctx["new_key"] = project.set_api_key()
             elif request.POST["create_key"] == "api_key_readonly":
@@ -399,6 +406,11 @@ def project(request: AuthenticatedHttpRequest, code: UUID) -> HttpResponse:
         elif "revoke_key" in request.POST:
             if not rw:
                 return HttpResponseForbidden()
+
+            # Revoking a key is a credential change; require sudo mode.
+            resp = sudo_mode_required(request)
+            if resp is not None:
+                return resp
 
             if request.POST["revoke_key"] == "api_key":
                 project.api_key = ""
@@ -473,6 +485,11 @@ def project(request: AuthenticatedHttpRequest, code: UUID) -> HttpResponse:
             if not is_owner:
                 return HttpResponseForbidden()
 
+            # Ownership transfer is irreversible; require sudo mode.
+            resp = sudo_mode_required(request)
+            if resp is not None:
+                return resp
+
             transfer_form = forms.TransferForm(request.POST)
             if transfer_form.is_valid():
                 # Look up the proposed new owner
@@ -500,6 +517,10 @@ def project(request: AuthenticatedHttpRequest, code: UUID) -> HttpResponse:
             if not is_owner:
                 return HttpResponseForbidden()
 
+            resp = sudo_mode_required(request)
+            if resp is not None:
+                return resp
+
             project.member_set.update(transfer_request_date=None)
             ctx["transfer_cancelled"] = True
             ctx["transfer_status"] = "success"
@@ -508,6 +529,12 @@ def project(request: AuthenticatedHttpRequest, code: UUID) -> HttpResponse:
             tr = project.transfer_request()
             if not tr or tr.user != request.user:
                 return HttpResponseForbidden()
+
+            # Accepting ownership transfer must not be possible on a hijacked
+            # session without the account password.
+            resp = sudo_mode_required(request)
+            if resp is not None:
+                return resp
 
             if not tr.can_accept():
                 return HttpResponseBadRequest()
@@ -707,6 +734,7 @@ def close(request: AuthenticatedHttpRequest) -> HttpResponse:
 
 @require_POST
 @login_required
+@require_sudo_mode
 def remove_project(request: AuthenticatedHttpRequest, code: str) -> HttpResponse:
     project = get_object_or_404(Project, code=code, owner=request.user)
     for check in project.check_set.all():
